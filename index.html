@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>二人麻雀(2面子1雀頭)</title>
+<style>
+:root{--bg:#2f6b4f;--panel:#245640;--tx:#f4f1e6;--face:#f7f3e6;--m:#b3261e;--p:#1b55b8;--s:#1e7a3c;--acc:#f0c24b;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1b3a2c;--panel:#142c21}}
+:root[data-theme="dark"]{--bg:#1b3a2c;--panel:#142c21}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:"Hiragino Sans","Noto Sans JP",system-ui,sans-serif;--u:min(1vw,4.8px)}
+#app,#me>div{max-width:480px;margin:auto;padding:calc(var(--u)*2)}
+#top{display:flex;justify-content:space-between;align-items:center;font-size:calc(var(--u)*3.2)}
+#sc{display:grid;grid-template-columns:1fr 1fr;gap:4px;margin:6px 0;text-align:center;font-size:calc(var(--u)*3.2)}
+#sc div{background:var(--panel);border-radius:8px;padding:4px 0}#sc .on{outline:2px solid var(--acc)}
+.rv{background:var(--panel);border-radius:8px;padding:4px;margin-bottom:6px;min-height:calc(var(--u)*9)}
+.rv small{opacity:.7;font-size:calc(var(--u)*2.6)}
+.row{display:flex;flex-wrap:wrap;gap:1px;align-items:flex-end}
+.t{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;width:calc(var(--u)*8.4);height:calc(var(--u)*11.4);background:var(--face);border-radius:calc(var(--u)*.9);border-bottom:calc(var(--u)*.8) solid #c9b98a;color:#222;line-height:1;user-select:none;-webkit-user-select:none;flex:none}
+.t b{font-size:calc(var(--u)*4.8)}.t i{font-style:normal;font-size:calc(var(--u)*3)}
+.s0{color:var(--m)}.s1{color:var(--p)}.s2{color:var(--s)}
+.h b{font-size:calc(var(--u)*5.8)}.h5{color:var(--s)}.h6{color:var(--m)}.h4{color:#888}
+.md{width:calc(var(--u)*6.2);height:calc(var(--u)*8.7)}.md b{font-size:calc(var(--u)*3.6)}.md i{font-size:calc(var(--u)*2.4)}.h.md b{font-size:calc(var(--u)*4.4)}
+.sm{width:calc(var(--u)*4.4);height:calc(var(--u)*6.2)}.sm b{font-size:calc(var(--u)*2.7)}.sm i{font-size:calc(var(--u)*1.8)}.h.sm b{font-size:calc(var(--u)*3.4)}
+.bk{background:#3d8f6a;border-bottom-color:#2a6b4e}.bk *{display:none}
+.mg{display:flex;gap:1px;margin-right:calc(var(--u)*2)}
+#me{position:sticky;bottom:0;background:var(--bg)}
+#msg{min-height:1.4em;text-align:center;font-size:calc(var(--u)*3.2);color:var(--acc)}
+#act{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;min-height:44px}
+#mm{display:flex;justify-content:center;min-height:calc(var(--u)*6.4);margin-top:4px}
+#hand{display:flex;gap:calc(var(--u)*.5);justify-content:center;margin-top:calc(var(--u)*3)}
+#hand .t{cursor:pointer}.up{transform:translateY(calc(var(--u)*-2));box-shadow:0 0 0 2px var(--acc)}
+.gap{width:calc(var(--u)*2.5);flex:none}
+button{font:inherit;font-size:16px;padding:10px 18px;border:0;border-radius:10px;background:var(--acc);color:#222;font-weight:700}
+button.g{background:#fff4;color:var(--tx)}
+#ov{position:fixed;inset:0;background:#000b;display:flex;align-items:center;justify-content:center;padding:12px;overflow:auto}
+#ov[hidden]{display:none}
+.box{background:var(--panel);border-radius:14px;padding:16px;text-align:center;width:100%;max-width:440px}
+.box .row{justify-content:center}.box h2{margin:0 0 10px}.box p{margin:8px 0}
+#help{opacity:.7;font-size:calc(var(--u)*2.7);text-align:center}
+</style></head><body>
+<div id="app">
+<div id="top"><b>二人麻雀</b><span id="info"></span></div>
+<div id="sc"></div>
+<div class="row" id="dora" style="gap:2px;margin-bottom:6px"></div>
+<div class="rv"><small>CPU</small><div class="row" id="cm"></div><div class="row" id="r1"></div></div>
+<div class="rv"><small>自分の捨て牌</small><div class="row" id="r0"></div></div>
+<div id="help">2面子1雀頭で和了(役必須)。牌をタップで選択、もう一度タップで打牌。</div>
+</div>
+<div id="me"><div><div id="msg"></div><div id="act"></div><div id="mm"></div><div id="hand"></div></div></div>
+<div id="ov" hidden></div>
+<script>
+const HO=['東','南','西','北','白','發','中'],SU=['萬','筒','索'],$=i=>document.getElementById(i);
+const nm=t=>t<27?(t%9+1)+SU[t/9|0]:HO[t-27];
+const T=(t,c='',id)=>{const d=id==null?'':` data-id="${id}"`;return t<27?`<div class="t s${t/9|0} ${c}"${d}><b>${t%9+1}</b><i>${SU[t/9|0]}</i></div>`:`<div class="t h h${t-27} ${c}"${d}><b>${HO[t-27]}</b></div>`};
+const cnt=a=>{const c=Array(34).fill(0);a.forEach(i=>c[i>>2]++);return c};
+const nx=t=>t<27?(t%9==8?t-8:t+1):t<31?(t==30?27:t+1):(t==33?31:t+1);
+const srt=a=>a.sort((x,y)=>x-y), dd=()=>1+Math.random()*6|0;
+let S={sc:[25000,25000],n:1};
+function sets(c,n,acc,r,p){if(n==0){if(c.every(x=>!x))r.push({p,s:acc.slice()});return}let i=0;while(i<34&&!c[i])i++;if(i==34)return;
+ if(c[i]>=3){c[i]-=3;acc.push([i,'k']);sets(c,n-1,acc,r,p);acc.pop();c[i]+=3}
+ if(i<27&&i%9<7&&c[i+1]&&c[i+2]){c[i]--;c[i+1]--;c[i+2]--;acc.push([i,'s']);sets(c,n-1,acc,r,p);acc.pop();c[i]++;c[i+1]++;c[i+2]++}}
+function dec(c,n){const r=[];for(let p=0;p<34;p++)if(c[p]>=2){c[p]-=2;sets(c,n,[],r,p);c[p]+=2}return r}
+const c4=c=>c.filter(x=>x==2).length==4&&c.every(x=>x==0||x==2);
+const sh=(c,m)=>dec(c,2-m).length>0||(m==0&&c4(c));
+function waits(p,ids){const c=cnt(ids),m=S.melds[p],mc=Array(34).fill(0),r=[];m.forEach(x=>mc[x.t]+=x.k=='kan'?4:3);
+ for(let t=0;t<34;t++)if(c[t]+mc[t]<4){c[t]++;if(sh(c,m.length))r.push(t);c[t]--}return r}
+function ev(p,ids,w,ts,rs){const M=S.melds[p],c=cnt(ids),open=M.some(m=>m.open),all=c.slice(),sw=S.dealer==p?27:28;
+ M.forEach(m=>all[m.t]+=m.k=='kan'?4:3);
+ const ds=dec(c.slice(),2-M.length);if(!M.length&&c4(c))ds.push({chi:1});let best=null;
+ let tan=1,ho=0;const su=new Set();
+ for(let t=0;t<34;t++)if(all[t]){if(t>=27||t%9==0||t%9==8)tan=0;t>=27?ho=1:su.add(t/9|0)}
+ for(const d of ds){const y=[],A=(s,v)=>y.push([s,v]);
+  if(S.ri[p])A('リーチ',1);if(S.ip[p])A('一発',1);if(ts&&!open)A('門前ツモ',1);if(rs)A('嶺上開花',1);
+  if(tan)A('断幺九',1);if(su.size==1)ho?A('混一色',2):A('清一色',5);
+  if(d.chi)A('4対子',2);else{
+   [...d.s.filter(s=>s[1]=='k').map(s=>s[0]),...M.map(m=>m.t)].forEach(t=>{const v=(t>=31?1:0)+(t==27?1:0)+(t==sw?1:0);if(v)A('役牌 '+HO[t-27],v)});
+   if(d.s.every(s=>s[1]=='k'))A('対々和',2);
+   if(!open&&!M.length&&d.s.every(s=>s[1]=='s')&&!(d.p>=31||d.p==27||d.p==sw)&&d.s.some(([s])=>(w==s&&s%9!=6)||(w==s+2&&s%9!=0)))A('平和',1)}
+  if(!y.length)continue;
+  const dr=S.doras.reduce((a,t)=>a+all[t],0),ur=S.ri[p]?S.uras.reduce((a,t)=>a+all[t],0):0;
+  const fan=y.reduce((a,x)=>a+x[1],0)+dr+ur;
+  if(!best||fan>best.fan)best={y,dr,ur,fan}}
+ if(!best)return null;let b=best.fan>=5?8000:1000*best.fan;if(S.dealer==p)b=Math.ceil(b*1.5/100)*100;best.pts=b;return best}
+function furi(p){return waits(p,S.hand[p]).some(t=>S.disc[p].some(i=>i>>2==t))||S.tfur[p]||S.pfur[p]}
+function setDora(){S.doras=[];S.uras=[];for(let i=0;i<S.doraN;i++){S.doras.push(nx(S.dead[2*i]>>2));S.uras.push(nx(S.dead[2*i+1]>>2))}}
+function roll(){let a,b;do{a=dd()+dd();b=dd()+dd()}while(a==b);S.dealer=a>b?0:1;
+ $('ov').innerHTML=`<div class="box"><h2>親決め</h2><p>サイコロ2個の合計<br>自分 ${a} / CPU ${b}</p><p><b>${S.dealer?'CPU':'自分'}が親です</b></p><button onclick="go()">開始</button></div>`;$('ov').hidden=false;S.dice=1}
+function go(){$('ov').hidden=true;S.dice=0;newRound()}
+function newRound(){const w=[...Array(136).keys()];for(let i=135;i>0;i--){const j=Math.random()*(i+1)|0;[w[i],w[j]]=[w[j],w[i]]}
+ S.dead=w.splice(0,14);S.wall=w;S.hand=[srt(w.splice(0,7)),srt(w.splice(0,7))];S.melds=[[],[]];S.disc=[[],[]];S.river=[[],[]];
+ S.ri=[0,0];S.ip=[0,0];S.tfur=[0,0];S.pfur=[0,0];S.doraN=1;setDora();S.sel=null;S.dr=null;S.pd=0;S.prompt=null;S.rm=0;S.over=0;S.canT=0;S.hint='';S.justRi=0;S.turn=S.dealer;draw(false)}
+function draw(rin){if(!rin&&!S.wall.length)return ryu();const p=S.turn;S.dr=rin?S.dead.pop():S.wall.pop();S.rs=rin;S.canT=0;
+ if(ev(p,[...S.hand[p],S.dr],S.dr>>2,true,rin)){if(p)return end(1,'ツモ');S.canT=1}
+ render();if(p)setTimeout(cpu,700);else if(S.ri[0]&&!S.canT)setTimeout(()=>{if(!S.over&&!S.turn&&S.dr!=null)out(0,S.dr)},700)}
+function cpu(){if(S.over)return;const all=[...S.hand[1],S.dr];if(S.ri[1])return out(1,S.dr);
+ if(!S.melds[1].some(m=>m.open)){let b=0,k=null;all.forEach(id=>{const r=[...all];r.splice(r.indexOf(id),1);const w=waits(1,r).length;if(w>b){b=w;k=id}});if(k!=null){S.ri[1]=1;S.justRi=1;return out(1,k)}}
+ cpuD()}
+function cpuD(){const all=S.dr!=null?[...S.hand[1],S.dr]:[...S.hand[1]],c=cnt(all);let b=1e9,k=all[0];
+ all.forEach(id=>{const t=id>>2;let s=c[t]*10;if(t<27){const r=t%9;if(r>0)s+=c[t-1]*4;if(r<8)s+=c[t+1]*4;if(r>1)s+=c[t-2]*2;if(r<7)s+=c[t+2]*2}s+=Math.random();if(s<b){b=s;k=id}});out(1,k)}
+function out(p,id){const all=S.dr!=null?[...S.hand[p],S.dr]:[...S.hand[p]];all.splice(all.indexOf(id),1);S.hand[p]=srt(all);
+ S.disc[p].push(id);S.river[p].push(id);S.last={p,id};S.dr=null;S.pd=0;S.sel=null;S.canT=0;S.tfur[p]=0;
+ if(S.justRi){S.ip[p]=1;S.justRi=0}else S.ip[p]=0;render();react(p,id)}
+function react(p,id){const q=1-p,t=id>>2,e=ev(q,[...S.hand[q],id],t,false,false);
+ if(q==1){if(e&&!furi(1))return end(1,'ロン');
+  if(!S.ri[1]&&(t>=31||t==27||t==28)&&S.hand[1].filter(i=>i>>2==t).length>=2&&S.wall.length&&Math.random()<.7){pon(1,t);return cpuD()}
+  S.turn=1;return draw(false)}
+ const o={shape:!!e},n=S.hand[0].filter(i=>i>>2==t).length;
+ if(e&&!furi(0))o.ron=1;if(!S.ri[0]&&S.wall.length){if(n>=2)o.pon=1;if(n>=3)o.kan=1}
+ if(o.ron||o.pon||o.kan){S.prompt=o;render();return}S.turn=0;draw(false)}
+function pon(p,t){let k=2;S.hand[p]=S.hand[p].filter(i=>!(i>>2==t&&k-->0));S.river[1-p].pop();S.melds[p].push({t,k:'pon',open:1});S.ip=[0,0];S.turn=p;S.dr=null;S.pd=1}
+function kan(p,t,ty){const all=S.dr!=null?[...S.hand[p],S.dr]:[...S.hand[p]];let k=ty=='d'?3:ty=='a'?4:1;
+ S.hand[p]=srt(all.filter(i=>!(i>>2==t&&k-->0)));
+ if(ty=='d'){S.river[1-p].pop();S.melds[p].push({t,k:'kan',open:1})}else if(ty=='a')S.melds[p].push({t,k:'kan',open:0});else S.melds[p].find(m=>m.t==t).k='kan';
+ S.ip=[0,0];S.dr=null;S.doraN++;setDora();S.turn=p;draw(true)}
+function act(k,t){if(S.over)return;const x=S.last?S.last.id>>2:0;
+ if(k=='tsumo')return end(0,'ツモ');
+ if(k=='ri'){S.rm=1;S.sel=null;S.hint='リーチ: 切る牌をタップ(聴牌を保てる牌のみ)';return render()}
+ if(k=='ron'){S.prompt=null;return end(0,'ロン')}
+ if(k=='pass'){const e=S.prompt.shape;S.prompt=null;if(e){S.tfur[0]=1;if(S.ri[0])S.pfur[0]=1}S.turn=0;return draw(false)}
+ if(k=='pon'){S.prompt=null;pon(0,x);return render()}
+ S.prompt=null;kan(0,k=='dkan'?x:t,k=='dkan'?'d':k=='akan'?'a':'k')}
+function ryu(){S.over=1;const a=waits(0,S.hand[0]).length>0,b=waits(1,S.hand[1]).length>0;let m='両者ノーテン、または両者聴牌のため点数の移動なし';
+ if(a&&!b){S.sc[0]+=1500;S.sc[1]-=1500;m='聴牌料 +1500点'}if(b&&!a){S.sc[1]+=1500;S.sc[0]-=1500;m='聴牌料 -1500点'}
+ S.next=(S.dealer?b:a)?S.dealer:1-S.dealer;
+ box(`<h2>流局</h2><p>自分: ${a?'聴牌':'ノーテン'} / CPU: ${b?'聴牌':'ノーテン'}</p><p>${m}</p>`)}
+function end(w,kind){S.over=1;const ts=kind=='ツモ',ids=[...S.hand[w],ts?S.dr:S.last.id],wt=ids[ids.length-1],e=ev(w,ids,wt>>2,ts,ts&&S.rs);
+ S.sc[w]+=e.pts;S.sc[1-w]-=e.pts;S.next=w==S.dealer?S.dealer:1-S.dealer;
+ const ms=S.melds[w].map(m=>'<div class="mg">'+Array(m.k=='kan'?4:3).fill(T(m.t,'md')).join('')+'</div>').join('');
+ box(`<h2>${w?'CPU':'自分'} ${kind}!</h2><div class="row">${ids.slice(0,-1).map(i=>T(i>>2,'md')).join('')}<span class="gap"></span>${T(wt>>2,'md')}</div><div class="row" style="margin-top:6px">${ms}</div><p>${e.y.map(x=>x[0]+' '+x[1]+'翻').join(' / ')}</p><p>ドラ ${e.dr}${S.ri[w]?' / 裏ドラ '+e.ur:''} ・ 計${e.fan}翻</p><p><b>${e.pts}点</b></p>`)}
+function box(h){const fin=S.sc.some(x=>x<=0)||S.n>=8;
+ $('ov').innerHTML=`<div class="box">${h}<p>自分 ${S.sc[0]} / CPU ${S.sc[1]}</p>${fin?`<p><b>終了: ${S.sc[0]==S.sc[1]?'引き分け':S.sc[0]>S.sc[1]?'あなたの勝ち!':'CPUの勝ち'}</b></p><button onclick="S.sc=[25000,25000];S.n=1;roll()">もう一度</button>`:'<button onclick="nr()">次の局へ</button>'}</div>`;$('ov').hidden=false;render()}
+function nr(){S.n++;S.dealer=S.next;$('ov').hidden=true;newRound()}
+function hint(id){const a=S.dr!=null?[...S.hand[0],S.dr]:[...S.hand[0]];a.splice(a.indexOf(id),1);const w=waits(0,a);S.hint=w.length?'聴牌! 待ち: '+w.map(nm).join(' '):''}
+function render(){if(!S.hand)return;const B=(t,l)=>`<button${l=='g'?' class="g"':''} onclick="act('${t[0]}'${t[1]!=null?','+t[1]:''})">${t[2]}</button>`;
+ $('sc').innerHTML=[0,1].map(i=>`<div class="${S.turn==i&&!S.over?'on':''}">${i?'CPU':'自分'}${S.dealer==i?'(親)':''}${S.ri[i]?' 【リーチ】':''}<br><b>${S.sc[i]}</b></div>`).join('');
+ $('info').textContent=`第${S.n}局 ・ 残り${S.wall.length}枚`;
+ $('dora').innerHTML='<small style="margin-right:4px">ドラ表示</small>'+[0,1,2,3,4].map(i=>i<S.doraN?T(S.dead[2*i]>>2,'sm'):T(0,'sm bk')).join('');
+ const mt=m=>'<div class="mg">'+Array(m.k=='kan'?4:3).fill(T(m.t,'sm')).join('')+'</div>';
+ $('r0').innerHTML=S.river[0].map(i=>T(i>>2,'sm')).join('');$('r1').innerHTML=S.river[1].map(i=>T(i>>2,'sm')).join('');
+ $('cm').innerHTML=S.melds[1].map(mt).join('');$('mm').innerHTML=S.melds[0].map(mt).join('');
+ const d=!S.turn&&S.dr!=null&&!S.over;
+ $('hand').innerHTML=S.hand[0].map(id=>T(id>>2,id==S.sel?'up':'',id)).join('')+(d?'<span class="gap"></span>'+T(S.dr>>2,S.dr==S.sel?'up':'',S.dr):'');
+ let b='';const all=d?[...S.hand[0],S.dr]:[...S.hand[0]];
+ if(S.canT)b+=B(['tsumo',null,'ツモ']);
+ if(S.prompt){const o=S.prompt;if(o.ron)b+=B(['ron',null,'ロン']);if(o.pon)b+=B(['pon',null,'ポン']);if(o.kan)b+=B(['dkan',null,'カン']);b+=B(['pass',null,'パス'],'g')}
+ else if(d&&!S.ri[0]){
+  if(!S.rm&&!S.melds[0].some(m=>m.open)&&all.some(id=>{const r=[...all];r.splice(r.indexOf(id),1);return waits(0,r).length}))b+=B(['ri',null,'リーチ']);
+  const c=cnt(all);if(S.wall.length){for(let t=0;t<34;t++){if(c[t]==4)b+=B(['akan',t,'暗槓 '+nm(t)]);else if(c[t]&&S.melds[0].some(m=>m.t==t&&m.k=='pon'))b+=B(['kkan',t,'加槓 '+nm(t)])}}}
+ $('act').innerHTML=b;
+ let m='';if(S.rm||S.sel!=null)m=S.hint;else if(S.canT)m='ツモ和了できます';else if(S.prompt)m='CPUの捨て牌: '+nm(S.last.id>>2);
+ else if(S.dr==null&&!S.pd&&!S.dice){const w=waits(0,S.hand[0]);if(w.length)m='聴牌 待ち: '+w.map(nm).join(' ')+(furi(0)?'(フリテン中)':'')}
+ $('msg').textContent=m}
+$('hand').onclick=e=>{const el=e.target.closest('.t');if(!el||S.turn||S.prompt||S.over||S.dice||(S.dr==null&&!S.pd))return;const id=+el.dataset.id;
+ if(S.ri[0]&&id!=S.dr)return;
+ if(S.sel==id){if(S.rm){const a=S.dr!=null?[...S.hand[0],S.dr]:[...S.hand[0]];a.splice(a.indexOf(id),1);
+   if(!waits(0,a).length){S.hint='その牌を切ると聴牌になりません';S.sel=null;return render()}S.ri[0]=1;S.justRi=1;S.rm=0}
+  return out(0,id)}
+ S.sel=id;hint(id);render()};
+roll();
+</script></body></html>
